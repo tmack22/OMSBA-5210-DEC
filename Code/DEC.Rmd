@@ -19,7 +19,7 @@ When you click the **Knit** button a document will be generated that includes bo
 library(tidyverse)
 library(ggplot2)
 library(stringr)
-user_path <- "/Users/taylor/Documents/OMSBA 5210/DEC/OMSBA-5210-DEC"
+user_path <- "/Users/danielaina/Documents/OMSBA 5210/DEC"
 game_reviews <- read.csv(paste0(user_path,"/Data/game_reviews.csv"))
 global_sales <- read.csv(paste0(user_path,"/Data/global_sales.csv"))
 pc_game_sales <- read.csv(paste0(user_path,"/Data/pc_game_sales.csv"))
@@ -93,4 +93,29 @@ twitch_game_data_temp <- twitch_game_data %>% mutate(Game = str_trim(Game)) %>%
 ```{r Joining Data}
 data_set <- left_join(x=global_sales_temp,y=game_reviews_temp,by=c("Name"="name","Platform"="platform"))
 data_set <- left_join(x=data_set,y=twitch_game_data_temp,by=c("Name"="Game"))
+```
+```{r Creating Publisher to Genre Stacked Barchart}
+library(RColorBrewer)
+library(dplyr)
+library(scales)
+ggplot(data_set,aes(y = Publisher, x = NA_Sales, fill = Genre)) +
+  geom_bar(stat = 'identity')
+
+# selecting Top Publishers
+
+data_set2 <- data_set %>%
+  group_by(Publisher) %>%
+  filter(Publisher %in% c("Microsoft Game Studios","Activision","Take-Two Interactive","Ubisoft"))
+  
+#plotting bar graph
+
+ggplot(data_set2, aes(y = Publisher, x = NA_Sales, fill = Genre,)) + labs( x = 'North American Sales', y = 'Publishers', title = 'Top Video Game Genres by Publishers') + scale_x_continuous(labels= scales::comma) + scale_color_brewer(palette="Set3") +
+  geom_bar(stat = 'identity')
+
+
+
+
+
+
+
 ```
