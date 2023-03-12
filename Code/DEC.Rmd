@@ -149,6 +149,6 @@ tree_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
                        TRUE ~ Region))
                  
 
-treemap(tree_data_set,index=c("Region","Genre"),vSize="Sales")
+treemap(tree_data_set,index=c("Region","Genre"),vSize="Sales",title= "Sales by Region and Genre") 
 
 ```
