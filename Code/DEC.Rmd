@@ -20,6 +20,8 @@ library(tidyverse)
 library(ggplot2)
 library(stringr)
 user_path <- "/Users/taylor/Documents/OMSBA 5210/DEC/OMSBA-5210-DEC"
+
+
 game_reviews <- read.csv(paste0(user_path,"/Data/game_reviews.csv"))
 global_sales <- read.csv(paste0(user_path,"/Data/global_sales.csv"))
 pc_game_sales <- read.csv(paste0(user_path,"/Data/pc_game_sales.csv"))
@@ -138,7 +140,14 @@ library(treemap)
 tree_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
                  gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
                  group_by(Name,Region) %>%
-                 select(Name,Genre,Region,Sales) %>% unique()
+                 select(Name,Genre,Region,Sales) %>% unique() %>%
+                  mutate(Region = case_when(
+                       Region == "NA_Sales" ~ "North America",
+                       Region == "EU_Sales" ~ "Europe",
+                       Region == "JP_Sales" ~ "Japan",
+                       Region == "Other_Sales" ~ "Other",
+                       TRUE ~ Region))
+                 
 
 treemap(tree_data_set,index=c("Region","Genre"),vSize="Sales")
 
