@@ -115,3 +115,34 @@ data_set2 <- data_set %>%
 ggplot(data_set2, aes(y = Publisher, x = NA_Sales, fill = Genre,)) + labs( x = 'North American Sales', y = 'Publishers', title = 'Top Video Game Genres by Publishers') + scale_x_continuous(labels= scales::comma) + scale_color_brewer(palette="Set3") +
   geom_bar(stat = 'identity')
 ```
+```{r Critic and Player Ratings Regressions}
+library(ggiraph)
+regression_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
+                       drop_na(meta_score,user_review) %>% group_by(Name) %>%
+                       filter(row_number() ==1) %>%
+                       mutate(meta_tooltip = paste("Game:",Name,"\nYear:",Year,"\nRating:",meta_score,"\nGlobal Sales:",Global_Sales)) %>%
+                       mutate(user_tooltip = paste("Game:",Name,"\nYear:",Year,"\nRating:",user_review,"\nGlobal Sales:",Global_Sales))
+                    
+
+mscore <- ggplot(regression_data_set, aes(x=meta_score,y=Global_Sales)) + geom_point_interactive(aes(tooltip=meta_tooltip)) +
+          geom_smooth() + scale_color_brewer(palette="Set3") + scale_y_continuous(labels= scales::comma) +
+          labs(x="Metacritic Rating (1-100)",y= "Global Sales",title= "User Rating Regression on Global Sales")
+uscore <- ggplot(regression_data_set, aes(x=user_review,y=Global_Sales)) + geom_point_interactive(aes(tooltip=user_tooltip)) + geom_smooth() + scale_color_brewer(palette="Set3") + scale_y_continuous(labels= scales::comma) +
+          labs(x= "User Rating (1-100)",y= "Global Sales",title= "Metacritic Rating Regression on Global Sales")
+ggiraph(ggobj=mscore)
+ggiraph(ggobj=uscore)
+```
+
+```{r Heatmap}
+library(treemap)
+tree_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
+                 gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
+                 group_by(Name,Region) %>%
+                 select(Name,Genre,Region,Sales) %>% unique()
+
+treemap(tree_data_set,index=c("Region","Genre"),vSize="Sales")
+
+ggplot(tile_data_set,aes(x=Region,y=Genre,fill=total_rev)) + geom_() + scale_fill_gradient(low="white",high="blue") +
+#        scale_x_discrete(guide=guide_axis(angle=60)) +
+#        labs(y="Product",x="Location",title="Warehouse Product Distribution",fill="Amount")
+```
