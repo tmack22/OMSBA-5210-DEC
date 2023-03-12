@@ -142,7 +142,4 @@ tree_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
 
 treemap(tree_data_set,index=c("Region","Genre"),vSize="Sales")
 
-ggplot(tile_data_set,aes(x=Region,y=Genre,fill=total_rev)) + geom_() + scale_fill_gradient(low="white",high="blue") +
-#        scale_x_discrete(guide=guide_axis(angle=60)) +
-#        labs(y="Product",x="Location",title="Warehouse Product Distribution",fill="Amount")
 ```
