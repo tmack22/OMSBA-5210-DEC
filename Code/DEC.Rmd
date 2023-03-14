@@ -137,6 +137,9 @@ ggiraph(ggobj=uscore)
 
 ```{r Heatmap}
 library(treemap)
+library(d3treeR)
+
+
 tree_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
                  gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
                  group_by(Name,Region) %>%
@@ -146,9 +149,13 @@ tree_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
                        Region == "EU_Sales" ~ "Europe",
                        Region == "JP_Sales" ~ "Japan",
                        Region == "Other_Sales" ~ "Other",
-                       TRUE ~ Region))
+                       TRUE ~ Region)) %>% ungroup() %>% group_by(Region) %>%
+                  mutate(total_sales = sum(Sales)) %>% ungroup() %>% group_by(Region,Genre) %>%
+                  mutate(Genre_sales = sum(Sales)) 
+                 # %>% mutate(tooltip =)
+              
                  
 
-treemap(tree_data_set,index=c("Region","Genre"),vSize="Sales",title= "Sales by Region and Genre") 
-
+tree <- treemap(tree_data_set,index=c("Region","Genre"),vSize="Sales",title= "Sales by Region and Genre") 
+d3tree2(tree,rootname="Sales by Region and Genre")
 ```
