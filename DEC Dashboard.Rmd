@@ -15,6 +15,9 @@ library(shinydashboard)
 library(tidyverse)
 library(ggplot2)
 library(stringr)
+library(ggiraph)
+library(treemap)
+library(d3treeR)
 user_path <- "/Users/taylor/Documents/OMSBA 5210/DEC/OMSBA-5210-DEC"
 
 
@@ -83,6 +86,21 @@ twitch_game_data_temp <- twitch_game_data %>% mutate(Game = str_trim(Game)) %>%
 
 data_set <- left_join(x=global_sales_temp,y=game_reviews_temp,by=c("Name"="name","Platform"="platform"))
 data_set <- left_join(x=data_set,y=twitch_game_data_temp,by=c("Name"="Game"))
+
+regression_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
+                       drop_na(meta_score,user_review) %>% group_by(Name) %>%
+                       filter(row_number() ==1) %>%
+                       gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
+                       mutate(Region_updated = case_when(
+                       Region == "NA_Sales" ~ "North America",
+                       Region == "EU_Sales" ~ "Europe",
+                       Region == "JP_Sales" ~ "Japan",
+                       Region == "Other_Sales" ~ "Other",
+                       TRUE ~ Region)) %>%
+                       select(Name,Year,Genre,Region,Sales) %>% mutate(Region_updated= Region) %>% unique() %>% 
+                       mutate(meta_tooltip = paste("Game:",Name,"\nYear:",Year,"\nRating:",meta_score,"\nGlobal Sales:",sum(Sales))) %>%
+                       mutate(user_tooltip = paste("Game:",Name,"\nYear:",Year,"\nRating:",user_review,"\nGlobal Sales:",sum(Sales))) %>% 
+                       filter(Genre %in% input$genre & Region %in% input$region)
 ```
 
 Column {.sidebar}
@@ -91,47 +109,58 @@ Column {.sidebar}
 ### Filters
 
 ```{r}
-checkboxGroupInput("radio","Choose Region:",c("North America"="NA_Sales",
+checkboxGroupInput("fil_region","Choose Region:",c("North America"="NA_Sales",
                       "Europe" = "EU_Sales",
                       "Japan" = "JP_Sales",
-                      "Other" = "Other_Sales"))
+                      "Other" = "Other_Sales"), selected = c("NA_Sales","EU_Sales","JP_Sales","Other_Sales"))
 
-
-
+checkboxGroupInput("fi_genre","Choose Genre:",sort(unique(data_set$Genre)),selected= unique(data_set$Genre))
 ```
 
 Column {.tabset}
 -----------------------------------------------------------------------
 
-###Tab 1 
+### Tab 1 
 
 ```{r tabsets, echo=FALSE}
-library(treemap)
-library(d3treeR)
-
-
 renderD3tree2({
 tree_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
                  gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
                  group_by(Name,Region) %>%
                  select(Name,Genre,Region,Sales) %>% mutate(Region_updated= Region) %>% unique() %>%
-                  mutate(Region = case_when(
+                  mutate(Region_updated = case_when(
                        Region == "NA_Sales" ~ "North America",
                        Region == "EU_Sales" ~ "Europe",
                        Region == "JP_Sales" ~ "Japan",
                        Region == "Other_Sales" ~ "Other",
-                       TRUE ~ Region))
+                       TRUE ~ Region)) %>% filter(Genre %in% input$genre & Region %in% input$region)
               
-d3tree2(treemap(tree_data_set,index=c("Region_updated","Genre"),vSize="Sales",title= "Sales by Region and Genre"),rootname="Sales by Region and Genre")
+d3tree2(treemap(tree_data_set[tree_data_set$Region %in% input$region],index=c("Region_updated","Genre"),vSize="Sales",title= "Sales by Region and Genre"),rootname="Sales by Region and Genre")
 })
 
 ```
 
-Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
+### Tab 2
+```{r}
+renderggiraph({
+mscore_data_set <- regression_data_set %>% filter(Genre %in% input$fil_genre & Region %in% input$fil_region)
+                    
 
-You can also use the `shinyApp` function to define an application inline rather then in an external directory.
+mscore <- ggplot(mscore_data_set,mapping= aes(x=meta_score,y=Global_Sales)) + geom_point_interactive(aes(tooltip=meta_tooltip)) +
+          geom_smooth() + scale_color_brewer(palette="Set3") + scale_y_continuous(labels= scales::comma) +
+          labs(x="Metacritic Rating (1-100)",y= "Global Sales",title= "User Rating Regression on Global Sales")
 
-In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
+ggiraph(ggobj=mscore)
+})
+```
 
-
-
+### Tab 3
+```{r}
+renderggiraph({
+uscore_data_set <- regression_data_set %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
+                  
+uscore <- ggplot(uscore_data_set,mapping= aes(x=user_review,y=Global_Sales)) + geom_point_interactive(aes(tooltip=user_tooltip)) + geom_smooth() + scale_color_brewer(palette="Set3") + scale_y_continuous(labels= scales::comma) +
+          labs(x= "User Rating (1-100)",y= "Global Sales",title= "Metacritic Rating Regression on Global Sales")
+ggiraph(ggobj=uscore)
+})
+```
