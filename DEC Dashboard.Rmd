@@ -108,14 +108,13 @@ df <- data_set %>%  gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","
                        Region == "JP_Sales" ~ "Japan",
                        Region == "Other_Sales" ~ "Other",
                        TRUE ~ Region)) %>% 
-                       group_by(Name,Platform) %>% mutate(total_sales = sum(Sales)) %>%
-                       filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
+                       group_by(Name,Platform) %>% mutate(total_sales = sum(Sales))
     
-top_100 <- df %>% select(Name,total_sales) %>% unique() %>% arrange(desc(total_sales)) %>% head(n=100) %>%
+top_100 <- df %>% select(Name,Platform,total_sales) %>% unique() %>% arrange(desc(total_sales)) %>% head(n=100) %>%
   ungroup() %>%
-  mutate(rank = row_number()) %>% select(-c("sales"))
+  mutate(rank = row_number()) %>% select(-c("total_sales"))
 
-df1 <- df %>% filter(Name %in% top_100$Name) %>% left_join(top_100,by="Name") %>% subset(rank %in% c(1.0:100.0))
+df1 <- df %>% filter(Name %in% top_100$Name) %>% left_join(top_100,by=c("Name","Platform")) %>% subset(rank %in% c(1.0:100.0))
 
 df2 <- df %>% 
   select(Name, total_hours_watched, Sales,Region, avg_peak_channels, Genre) %>% 
@@ -172,47 +171,37 @@ ggiraph(ggobj = bar_plot)
 
 ### point
 ```{r point, echo=FALSE}
-df <- data_set %>%  gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
-                       mutate(Region_updated = case_when(
-                       Region == "NA_Sales" ~ "North America",
-                       Region == "EU_Sales" ~ "Europe",
-                       Region == "JP_Sales" ~ "Japan",
-                       Region == "Other_Sales" ~ "Other",
-                       TRUE ~ Region)) %>% 
-                       group_by(Name,Platform) %>% mutate(total_sales = sum(Sales)) %>%
-                       filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
-    
-top_100 <- df %>% select(Name,total_sales) %>% unique() %>% arrange(desc(total_sales)) %>% head(n=100) %>%
-  ungroup() %>%
-  mutate(rank = row_number()) %>% select(-c("sales"))
 
-df1 <- df %>% filter(Name %in% top_100$Name) %>% left_join(top_100,by="Name") %>% subset(rank %in% c(1.0:100.0))
 
 renderggiraph({
-v1 <- df1 %>% 
+point_df <- df1 %>% 
+            filter(Region %in% input$fil_region & Genre %in% input$fil_genre) %>% group_by(Name,Platform) %>% mutate(all_sales = sum(Sales)) %>% ungroup() %>%
   mutate(tooltip = paste0(tooltip = paste0('Title: ', stringr::str_to_title(Name), 
   '\nRank: ', rank, 
-  '\nSales: ', Sales,
-  '\nPlatform: ', Platform))) %>% 
-ggplot(df1, mapping=aes(x = rank, y = total_sales/1000000, color = Platform, tooltip = tooltip)) +
+  '\nSales: ', all_sales,
+  '\nPlatform: ', Platform))) %>% select(rank,Platform,Name,all_sales,tooltip) %>% unique()
+
+viz1 <- ggplot(point_df, mapping=aes(x = rank, y = all_sales/1000000, color = Platform, tooltip = tooltip)) +
   geom_point_interactive(size = 6, stat = "identity") +
   scale_x_reverse() +
   scale_color_brewer(palette = 'Set3') +
   theme_minimal() +
   labs(x = 'Rank', y = 'Global Sales in Millions', title = 'Global Sales of Top 100 Video Games') +
   theme(plot.title =element_text(hjust = .5, size = 18), text = element_text(size = 12))
-ggiraph(ggobj = v1)
+ggiraph(ggobj = viz1)
 })
 ```
 
+### Bubble
 ```{r bubble, echo=FALSE}
 renderggiraph({
-  viz2 <- df2 %>% 
+bubble_df <- df2 %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre) %>%
     mutate(tooltip = paste0(tooltip = paste0('Title: ', stringr::str_to_title(Name), 
                                              '\nHours Watched On Twitch (Millions): ', total_hours_watched, 
                                              '\nSales (Millions): ', all_sales,
-                                             '\nAverage Peak Channels: ', avg_peak_channels))) %>%
-    ggplot(df2, mapping = aes(x = total_hours_watched/1000000, y=all_sales/1000000, size = avg_peak_channels, color = Genre, tooltip = tooltip)) +
+                                             '\nAverage Peak Channels: ', avg_peak_channels))) 
+  
+viz2 <- ggplot(bubble_df, mapping = aes(x = total_hours_watched/1000000, y=all_sales/1000000, size = avg_peak_channels, color = Genre, tooltip = tooltip)) +
     geom_point_interactive(alpha = .7) +
     scale_size(range = c(1.4, 20), name="Average Peak Channels") +
     labs(x = 'Hours Watched On Twitch in Millions', y = 'Sales in Millions', title = 'Hours Watched on Twitch to Sales') +
