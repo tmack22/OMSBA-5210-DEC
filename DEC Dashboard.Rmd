@@ -97,10 +97,35 @@ regression_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %
                        Region == "JP_Sales" ~ "Japan",
                        Region == "Other_Sales" ~ "Other",
                        TRUE ~ Region)) %>%
-                       select(Name,Year,Genre,Region,Sales) %>% mutate(Region_updated= Region) %>% unique() %>% 
-                       mutate(meta_tooltip = paste("Game:",Name,"\nYear:",Year,"\nRating:",meta_score,"\nGlobal Sales:",sum(Sales))) %>%
-                       mutate(user_tooltip = paste("Game:",Name,"\nYear:",Year,"\nRating:",user_review,"\nGlobal Sales:",sum(Sales))) %>% 
-                       filter(Genre %in% input$genre & Region %in% input$region)
+                       select(Name,Year,Genre,Region,Region_updated,Sales,meta_score,user_review)  %>% unique() %>% 
+                       mutate(meta_tooltip = paste("Game:",Name,"\nYear:",Year,"\nRating:",meta_score,"\nRegion:",Region_updated,"\nSales:",Sales)) %>%
+                       mutate(user_tooltip = paste("Game:",Name,"\nYear:",Year,"\nRating:",user_review,"\nRegion:",Region_updated,"\nSales:",Sales))
+
+df <- data_set %>%  gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
+                       mutate(Region_updated = case_when(
+                       Region == "NA_Sales" ~ "North America",
+                       Region == "EU_Sales" ~ "Europe",
+                       Region == "JP_Sales" ~ "Japan",
+                       Region == "Other_Sales" ~ "Other",
+                       TRUE ~ Region)) %>% 
+                       group_by(Name,Platform) %>% mutate(total_sales = sum(Sales)) %>%
+                       filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
+    
+top_100 <- df %>% select(Name,total_sales) %>% unique() %>% arrange(desc(total_sales)) %>% head(n=100) %>%
+  ungroup() %>%
+  mutate(rank = row_number()) %>% select(-c("sales"))
+
+df1 <- df %>% filter(Name %in% top_100$Name) %>% left_join(top_100,by="Name") %>% subset(rank %in% c(1.0:100.0))
+
+df2 <- df %>% 
+  select(Name, total_hours_watched, Sales,Region, avg_peak_channels, Genre) %>% 
+  group_by(Name) %>% 
+  mutate(all_sales = sum(Sales)) %>% 
+  drop_na()
+
+df2<- df2 %>% 
+  select(Name, total_hours_watched, avg_peak_channels, all_sales, Genre,Region) %>% 
+  unique()
 ```
 
 Column {.sidebar}
@@ -114,15 +139,96 @@ checkboxGroupInput("fil_region","Choose Region:",c("North America"="NA_Sales",
                       "Japan" = "JP_Sales",
                       "Other" = "Other_Sales"), selected = c("NA_Sales","EU_Sales","JP_Sales","Other_Sales"))
 
-checkboxGroupInput("fi_genre","Choose Genre:",sort(unique(data_set$Genre)),selected= unique(data_set$Genre))
+checkboxGroupInput("fil_genre","Choose Genre:",sort(unique(data_set$Genre)),selected= unique(data_set$Genre))
 ```
 
 Column {.tabset}
 -----------------------------------------------------------------------
+### Bar Chart
+```{r bar chart, echo=FALSE}
+renderggiraph({
+data_set2 <- data_set %>% gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
+                       mutate(Region_updated = case_when(
+                       Region == "NA_Sales" ~ "North America",
+                       Region == "EU_Sales" ~ "Europe",
+                       Region == "JP_Sales" ~ "Japan",
+                       Region == "Other_Sales" ~ "Other",
+                       TRUE ~ Region)) %>% mutate(tooltip = paste0('Genre:',Genre, '\n', 'Total Sales:', sum(Sales))) %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
+  
+top_pub <- data_set2 %>% group_by(Publisher) %>% mutate(top_sales = sum(Sales)) %>%
+           select(Publisher,top_sales) %>% unique() %>% arrange(desc(top_sales)) %>%
+           head(n=5) %>% select(Publisher)
 
-### Tab 1 
+bar_data_set <- data_set2 %>% filter(Publisher %in% top_pub$Publisher)
 
-```{r tabsets, echo=FALSE}
+bar_plot <- ggplot(bar_data_set,aes(x=Sales,y=Publisher,fill= Genre)) + labs(x = 'Sales', y = 'Publishers', title = 'Top Video Game Genres by Publishers') + scale_x_continuous(labels= scales::comma) + scale_color_brewer(palette="Set3") +
+  geom_bar(stat = 'identity') +
+  geom_point_interactive(aes(tooltip = tooltip), size = .05)
+
+ggiraph(ggobj = bar_plot)
+
+})
+```
+
+### point
+```{r point, echo=FALSE}
+df <- data_set %>%  gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
+                       mutate(Region_updated = case_when(
+                       Region == "NA_Sales" ~ "North America",
+                       Region == "EU_Sales" ~ "Europe",
+                       Region == "JP_Sales" ~ "Japan",
+                       Region == "Other_Sales" ~ "Other",
+                       TRUE ~ Region)) %>% 
+                       group_by(Name,Platform) %>% mutate(total_sales = sum(Sales)) %>%
+                       filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
+    
+top_100 <- df %>% select(Name,total_sales) %>% unique() %>% arrange(desc(total_sales)) %>% head(n=100) %>%
+  ungroup() %>%
+  mutate(rank = row_number()) %>% select(-c("sales"))
+
+df1 <- df %>% filter(Name %in% top_100$Name) %>% left_join(top_100,by="Name") %>% subset(rank %in% c(1.0:100.0))
+
+renderggiraph({
+v1 <- df1 %>% 
+  mutate(tooltip = paste0(tooltip = paste0('Title: ', stringr::str_to_title(Name), 
+  '\nRank: ', rank, 
+  '\nSales: ', Sales,
+  '\nPlatform: ', Platform))) %>% 
+ggplot(df1, mapping=aes(x = rank, y = total_sales/1000000, color = Platform, tooltip = tooltip)) +
+  geom_point_interactive(size = 6, stat = "identity") +
+  scale_x_reverse() +
+  scale_color_brewer(palette = 'Set3') +
+  theme_minimal() +
+  labs(x = 'Rank', y = 'Global Sales in Millions', title = 'Global Sales of Top 100 Video Games') +
+  theme(plot.title =element_text(hjust = .5, size = 18), text = element_text(size = 12))
+ggiraph(ggobj = v1)
+})
+```
+
+```{r bubble, echo=FALSE}
+renderggiraph({
+  viz2 <- df2 %>% 
+    mutate(tooltip = paste0(tooltip = paste0('Title: ', stringr::str_to_title(Name), 
+                                             '\nHours Watched On Twitch (Millions): ', total_hours_watched, 
+                                             '\nSales (Millions): ', all_sales,
+                                             '\nAverage Peak Channels: ', avg_peak_channels))) %>%
+    ggplot(df2, mapping = aes(x = total_hours_watched/1000000, y=all_sales/1000000, size = avg_peak_channels, color = Genre, tooltip = tooltip)) +
+    geom_point_interactive(alpha = .7) +
+    scale_size(range = c(1.4, 20), name="Average Peak Channels") +
+    labs(x = 'Hours Watched On Twitch in Millions', y = 'Sales in Millions', title = 'Hours Watched on Twitch to Sales') +
+    scale_color_brewer(palette = 'Set3') +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = .5, size = 18), text = element_text(size = 12))
+ggiraph(ggobj = viz2)
+})
+
+
+```
+
+
+### Tree map
+
+```{r tree map, echo=FALSE}
 renderD3tree2({
 tree_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
                  gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
@@ -133,34 +239,34 @@ tree_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
                        Region == "EU_Sales" ~ "Europe",
                        Region == "JP_Sales" ~ "Japan",
                        Region == "Other_Sales" ~ "Other",
-                       TRUE ~ Region)) %>% filter(Genre %in% input$genre & Region %in% input$region)
+                       TRUE ~ Region)) %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
               
-d3tree2(treemap(tree_data_set[tree_data_set$Region %in% input$region],index=c("Region_updated","Genre"),vSize="Sales",title= "Sales by Region and Genre"),rootname="Sales by Region and Genre")
+d3tree2(treemap(tree_data_set,index=c("Region_updated","Genre"),vSize="Sales",title= "Sales by Region and Genre"),rootname="Sales by Region and Genre")
 })
 
 ```
 
-### Tab 2
-```{r}
+### Reg Meta
+```{r Reg Meta}
 renderggiraph({
-mscore_data_set <- regression_data_set %>% filter(Genre %in% input$fil_genre & Region %in% input$fil_region)
+mscore_data_set <- regression_data_set %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
                     
 
-mscore <- ggplot(mscore_data_set,mapping= aes(x=meta_score,y=Global_Sales)) + geom_point_interactive(aes(tooltip=meta_tooltip)) +
+mscore <- ggplot(mscore_data_set,mapping= aes(x=meta_score,y=Sales)) + geom_point_interactive(aes(tooltip=meta_tooltip)) +
           geom_smooth() + scale_color_brewer(palette="Set3") + scale_y_continuous(labels= scales::comma) +
-          labs(x="Metacritic Rating (1-100)",y= "Global Sales",title= "User Rating Regression on Global Sales")
+          labs(x="Metacritic Rating (1-100)",y= "Global Sales",title= "Metacritic Rating Regression on Global Sales")
 
 ggiraph(ggobj=mscore)
 })
 ```
 
-### Tab 3
-```{r}
+### Reg User
+```{r Reg User}
 renderggiraph({
 uscore_data_set <- regression_data_set %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
                   
-uscore <- ggplot(uscore_data_set,mapping= aes(x=user_review,y=Global_Sales)) + geom_point_interactive(aes(tooltip=user_tooltip)) + geom_smooth() + scale_color_brewer(palette="Set3") + scale_y_continuous(labels= scales::comma) +
-          labs(x= "User Rating (1-100)",y= "Global Sales",title= "Metacritic Rating Regression on Global Sales")
+uscore <- ggplot(uscore_data_set,mapping= aes(x=user_review,y=Sales)) + geom_point_interactive(aes(tooltip=user_tooltip)) + geom_smooth() + scale_color_brewer(palette="Set3") + scale_y_continuous(labels= scales::comma) +
+          labs(x= "User Rating (1-100)",y= "Global Sales",title= "User Rating Regression on Global Sales")
 ggiraph(ggobj=uscore)
 })
 ```
