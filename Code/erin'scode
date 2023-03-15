@@ -1,0 +1,137 @@
+---
+title: "Untitled"
+author: "Erin Ballar"
+date: "2023-03-12"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    theme: 
+      version: 4
+runtime: shiny
+---
+
+```{r global, include= FALSE}
+library(tidyverse)
+library(ggplot2)
+library(stringr)
+library(RColorBrewer)
+library(dplyr)
+library(scales)
+library(ggiraph)
+user_path <- "C:/Users/Erin/Documents/5210 DATA VIZ/data_exploration"
+game_reviews <- read.csv(paste0(user_path,"/game_reviews.csv"))
+global_sales <- read.csv(paste0(user_path,"/global_sales.csv"))
+pc_game_sales <- read.csv(paste0(user_path,"/pc_game_sales.csv"))
+twitch_game_data <- read.csv(paste0(user_path,"/twitch_game_data.csv"))
+twitch_global_data <- read.csv(paste0(user_path,"/twitch_global_data.csv"))
+data_set <- merge(x=global_sales,y=game_reviews,by.x="Name",by.y="name")
+options(scipen = 999)
+
+game_reviews_temp <- game_reviews %>% mutate(user_review = as.numeric(user_review) * 10) %>%
+  mutate(platform = str_trim(platform)) %>%
+  mutate(name = str_trim(name)) %>% drop_na()
+global_sales_temp <- global_sales %>% filter(Year >= 2010) %>% filter(Year != "N/A") %>% 
+  mutate(handheld_console = 
+           ifelse(Platform %in% c("DS","3DS","PSP","PSV","GB"),TRUE,FALSE)) %>%
+  mutate(NA_Sales = NA_Sales * 1000000) %>%
+  mutate(EU_Sales = EU_Sales * 1000000) %>%
+  mutate(JP_Sales = JP_Sales * 1000000) %>%
+  mutate(Other_Sales = Other_Sales * 1000000) %>%
+  mutate(Global_Sales = Global_Sales * 1000000) %>%
+  mutate(Platform = case_when(
+    Platform == "X360" ~ "Xbox 360",
+    Platform == "PS3" ~ "PlayStation 3",
+    Platform == "PS4" ~ "PlayStation 4",
+    Platform == "XOne" ~ "Xbox One",
+    Platform == "WiiU" ~ "Wii U",
+    Platform == "PS2" ~ "PlayStation 2",
+    Platform == "GBA" ~ "Game Boy Advance",
+    Platform == "PSV" ~ "PlayStation Vita",
+    Platform == "PS" ~ "PlayStation",
+    Platform == "XB" ~ "Xbox",
+    Platform == "GC" ~ "GameCube",
+    Platform == "GB" ~ "Game Boy",
+    Platform == "GC" ~ "GameCube",
+    Platform == "N64" ~ "Nintendo 64",
+    TRUE ~ Platform
+  )) %>% mutate(Name = str_trim(Name)) %>% drop_na(c(Year,Platform))
+twitch_game_data_temp <- twitch_game_data %>% mutate(Game = str_trim(Game)) %>%
+  filter(Game != "") %>%
+  mutate(Hours_watched = as.numeric(str_trim(sub("\\(.*","",Hours_watched)))) %>%
+  mutate(Hours_Streamed = str_trim(sub("\\(.*","",Hours_Streamed))) %>%
+  mutate(Peak_viewers = str_trim(sub("\\(.*","",Peak_viewers))) %>%
+  mutate(Peak_channels = str_trim(sub("\\(.*","",Peak_channels))) %>%
+  mutate(Streamers = str_trim(sub("\\(.*","",Streamers))) %>%
+  mutate(Avg_viewers = str_trim(sub("\\(.*","",Avg_viewers))) %>%
+  mutate(Avg_channels = str_trim(sub("\\(.*","",Avg_channels))) %>%
+  mutate(Avg_viewer_ratio = str_trim(sub("\\(.*","",Avg_viewer_ratio))) %>%
+  mutate(Hours_Streamed = as.numeric(gsub("\\D","",Hours_Streamed))) %>%
+  group_by(Game) %>% 
+  mutate(total_hours_watched = sum(Hours_watched)) %>%
+  mutate(total_hours_streamed = sum(as.numeric(Hours_Streamed))) %>%
+  mutate(avg_peak_viewers = mean(as.numeric(Peak_viewers))) %>%
+  mutate(avg_peak_channels = mean(as.numeric(Peak_channels))) %>%
+  mutate(avg_streamers = mean(as.numeric(Streamers))) %>%
+  mutate(Avg_viewers = mean(as.numeric(Avg_viewers))) %>%
+  mutate(Avg_channels = mean(as.numeric(Avg_channels))) %>%
+  mutate(Avg_viewer_ratio = mean(as.numeric(Avg_viewer_ratio))) %>%
+  select(c("Game","total_hours_watched","total_hours_streamed",
+           "avg_peak_viewers","avg_peak_channels","avg_streamers","Avg_viewers",
+           "Avg_channels","Avg_viewer_ratio")) %>% unique() %>% ungroup()
+
+data_set <- left_join(x=global_sales_temp,y=game_reviews_temp,by=c("Name"="name","Platform"="platform"))
+data_set <- left_join(x=data_set,y=twitch_game_data_temp,by=c("Name"="Game"))
+
+df <- data_set %>% 
+  select(Name, Platform, Global_Sales) %>%
+  mutate(rank = rank(-Global_Sales)) %>% 
+  subset( rank %in% c(1.0:100.0))
+
+df2 <- data_set %>% 
+  select(Name, total_hours_watched, Global_Sales, avg_peak_channels, Genre) %>% 
+  group_by(Name) %>% 
+  mutate(total_sales = sum(Global_Sales)) %>% 
+  drop_na()
+
+df2<- df2 %>% 
+  select(Name, total_hours_watched, avg_peak_channels, total_sales, Genre) %>% 
+  unique()
+
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+```{r}
+renderggiraph({
+v1 <- df %>% 
+  mutate(tooltip = paste0(tooltip = paste0('Title: ', stringr::str_to_title(Name), 
+  '\nRank: ', rank, 
+  '\nSales: ', Global_Sales,
+  '\nPlatform: ', Platform))) %>% 
+ggplot(df, mapping=aes(x = rank, y = Global_Sales/1000000, color = Platform, tooltip = tooltip)) +
+  geom_point_interactive(size = 6, stat = "identity") +
+  scale_x_reverse() +
+  scale_color_brewer(palette = 'Set3') +
+  theme_minimal() +
+  labs(x = 'Rank', y = 'Global Sales in Millions', title = 'Global Sales of Top 100 Video Games') +
+  theme(plot.title =element_text(hjust = .5, size = 18), text = element_text(size = 12))
+ggiraph(ggobj = v1)
+})
+
+renderggiraph({
+  viz2 <- df2 %>% 
+    mutate(tooltip = paste0(tooltip = paste0('Title: ', stringr::str_to_title(Name), 
+                                             '\nHours Watched On Twitch (Millions): ', total_hours_watched, 
+                                             '\nSales (Millions): ', total_sales,
+                                             '\nAverage Peak Channels: ', avg_peak_channels))) %>%
+    ggplot(df2, mapping = aes(x = total_hours_watched/1000000, y=total_sales/1000000, size = avg_peak_channels, color = Genre, tooltip = tooltip)) +
+    geom_point_interactive(alpha = .7) +
+    scale_size(range = c(1.4, 20), name="Average Peak Channels") +
+    labs(x = 'Hours Watched On Twitch in Millions', y = 'Sales in Millions', title = 'Hours Watched on Twitch to Sales') +
+    scale_color_brewer(palette = 'Set3') +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = .5, size = 18), text = element_text(size = 12))
+ggiraph(ggobj = viz2)
+})
+```
