@@ -154,7 +154,8 @@ data_set2 <- data_set %>% gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sa
                        Region == "Other_Sales" ~ "Other",
                        TRUE ~ Region)) %>% group_by(Publisher,Genre) %>%
                        mutate(pub_sales = sum(Sales)) %>%
-                       mutate(tooltip = paste0('Genre:',Genre, '\n', 'Total Sales:', pub_sales))
+                       mutate(tooltip = paste0('Genre:',Genre, '\n', 'Total Sales:', pub_sales)) %>%
+             filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
                        
   
 top_pub <- data_set2 %>% group_by(Publisher) %>% mutate(top_sales = sum(Sales)) %>%
@@ -195,11 +196,12 @@ ggiraph(ggobj = viz1)
 ### Twitch Streams to Sales
 ```{r bubble, echo=FALSE}
 renderggiraph({
-bubble_df <- df2 %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre) %>%
-    mutate(tooltip = paste0(tooltip = paste0('Title: ', stringr::str_to_title(Name), 
-                                             '\nHours Watched On Twitch (Millions): ', total_hours_watched, 
-                                             '\nSales (Millions): ', all_sales,
-                                             '\nAverage Peak Channels: ', avg_peak_channels))) 
+bubble_df <- df2 %>% select(-c("Region")) %>% filter(Genre %in% input$fil_genre) %>%
+    mutate(tooltip = paste0(tooltip = paste0('Title: ', stringr::str_to_title(Name),
+                                             '\nGenre: ',Genre,
+                                             '\nHours Watched On Twitch (Millions): ', total_hours_watched/1000000, 
+                                             '\nSales (Millions): ', all_sales/1000000,
+                                             '\nAverage Peak Channels: ', avg_peak_channels))) %>% unique()
   
 viz2 <- ggplot(bubble_df, mapping = aes(x = total_hours_watched/1000000, y=all_sales/1000000, size = avg_peak_channels, color = Genre, tooltip = tooltip)) +
     geom_point_interactive(alpha = .7) +
