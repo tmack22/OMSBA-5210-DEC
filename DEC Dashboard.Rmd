@@ -106,11 +106,11 @@ df <- data_set %>%  gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","
                        TRUE ~ Region)) %>% 
                        group_by(Name,Platform) %>% mutate(total_sales = sum(Sales))
     
-top_100 <- df %>% select(Name,Platform,total_sales) %>% unique() %>% arrange(desc(total_sales)) %>% head(n=100) %>%
+top_100 <- df %>% select(Name,Platform,total_sales,Genre) %>% unique() %>% arrange(desc(total_sales)) %>% head(n=100) %>%
   ungroup() %>%
   mutate(rank = row_number()) %>% select(-c("total_sales"))
 
-df1 <- df %>% filter(Name %in% top_100$Name) %>% left_join(top_100,by=c("Name","Platform")) %>% subset(rank %in% c(1.0:100.0))
+df1 <- df %>% filter(Name %in% top_100$Name) %>% left_join(top_100,by=c("Name","Platform","Genre")) %>% subset(rank %in% c(1.0:100.0))
 
 df2 <- df %>% 
   select(Name, total_hours_watched, Sales,Region, avg_peak_channels, Genre) %>% 
@@ -121,6 +121,8 @@ df2 <- df %>%
 df2<- df2 %>% 
   select(Name, total_hours_watched, avg_peak_channels, all_sales, Genre,Region) %>% 
   unique()
+
+df3 <- df %>% filter(Name %in% top_100$Name) %>% left_join(top_100,by=c("Name","Platform","Genre")) %>% subset(rank %in% c(1.0:100.0))
 ```
 
 Column {.sidebar}
@@ -187,6 +189,16 @@ viz1 <- ggplot(point_df, mapping=aes(x = rank, y = all_sales/1000000, color = Pl
   theme(plot.title =element_text(hjust = .5, size = 18), text = element_text(size = 12))
 ggiraph(ggobj = viz1)
 })
+
+renderggiraph({
+  histo_df <- df3 %>% 
+            filter(Region %in% input$fil_region & Genre %in% input$fil_genre) %>% group_by(Name,Region,Genre) %>% mutate(all_sales = sum(Sales)) %>% ungroup()
+  viz3 <- histo_df %>% ggplot(aes(x = all_sales/1000000)) +
+    geom_histogram(binwidth = 1, fill = "#A3E4D7", color = "#A3E4D7") +
+  labs(x = 'Total Sales(Millions)', y = 'Count', title = 'Histogram of Sales of Top 100 Games') +
+  theme(plot.title =element_text(hjust = .5, size = 18), text = element_text(size = 12))
+ggiraph(ggobj = viz3)
+})
 ```
 
 ### Twitch Streams to Sales
@@ -231,6 +243,18 @@ d3tree2(treemap(tree_data_set,index=c("Region_updated","Genre"),vSize="Sales",ti
 })
 
 ```
+### Histogram of Ratings 
+
+```{r Histogram Ratings}
+renderggiraph({
+  
+  
+  
+  viz3 <- ggplot()
+  
+})
+
+```
 
 ### Metacritic Rating Regression
 ```{r Reg Meta}
@@ -245,6 +269,16 @@ mscore <- ggplot(mscore_data_set,mapping= aes(x=meta_score,y=Sales/1000000)) + g
 
 ggiraph(ggobj=mscore)
 })
+
+renderggiraph({
+mscore_histo <- regression_data_set %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
+viz4 <- mscore_histo %>% ggplot(aes(x = meta_score)) +
+    geom_histogram(binwidth = 1, fill = "#A3E4D7", color = "#A3E4D7") +
+  labs(x = 'Metacritic Score', y = 'Count', title = 'Histogram of Metacritic Scores') +
+  theme(plot.title =element_text(hjust = .5, size = 18), text = element_text(size = 12))
+ggiraph(ggobj = viz4)
+
+})
 ```
 
 ### User Rating Regression
@@ -256,5 +290,15 @@ uscore <- ggplot(uscore_data_set,mapping= aes(x=user_review,y=Sales/1000000)) + 
           labs(x= "User Rating (1-100)",y= "Sales in Millions",title= "User Rating Regression on Global Sales") +
           theme(plot.title = element_text(hjust = .5, size = 18), text = element_text(size = 12))
 ggiraph(ggobj=uscore)
+})
+
+renderggiraph({
+uscore_histo <- regression_data_set %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
+viz5 <- uscore_histo %>% ggplot(aes(x = user_review)) +
+    geom_histogram(binwidth = 1, fill = "#A3E4D7", color = "#A3E4D7") +
+  labs(x = 'User Score', y = 'Count', title = 'Histogram of User Score') +
+  theme(plot.title =element_text(hjust = .5, size = 18), text = element_text(size = 12))
+ggiraph(ggobj = viz5)
+
 })
 ```
