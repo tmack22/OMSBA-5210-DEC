@@ -133,6 +133,7 @@ Column {.sidebar}
 ### Filters
 
 ```{r}
+
 checkboxGroupInput("fil_region","Choose Region:",c("North America"="NA_Sales",
                       "Europe" = "EU_Sales",
                       "Japan" = "JP_Sales",
@@ -154,7 +155,7 @@ data_set2 <- data_set %>% gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sa
                        Region == "Other_Sales" ~ "Other",
                        TRUE ~ Region)) %>% group_by(Publisher,Genre) %>%
                        mutate(pub_sales = sum(Sales)) %>%
-                       mutate(tooltip = paste0('Genre:',Genre, '\n', 'Total Sales:', pub_sales)) %>%
+                       mutate(tooltip = paste0('Genre: ',Genre, '\n', 'Total Sales: ', pub_sales)) %>%
              filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
                        
   
@@ -192,7 +193,8 @@ viz1 <- ggplot(point_df, mapping=aes(x = rank, y = all_sales/1000000, color = Pl
 ggiraph(ggobj = viz1)
 })
 ```
-
+Column {data-width=650}
+-----------------------------------------------------------------------
 ### Twitch Streams to Sales
 ```{r bubble, echo=FALSE}
 renderggiraph({
@@ -260,5 +262,16 @@ uscore <- ggplot(uscore_data_set,mapping= aes(x=user_review,y=Sales/1000000)) + 
           labs(x= "User Rating (1-100)",y= "Sales in Millions",title= "User Rating Regression on Global Sales") +
           theme(plot.title = element_text(hjust = .5, size = 18), text = element_text(size = 12))
 ggiraph(ggobj=uscore)
+})
+```
+
+```{r hist}
+renderggiraph({
+df3 <- df %>% filter(Name %in% top_100$Name) %>% left_join(top_100,by=c("Name","Platform","Genre")) %>% subset(rank %in% c(1.0:100.0))
+histo_df <- df3 %>%
+  filter(Region %in% input$fil_region & Genre %in% input$fil_genre) %>% group_by(Name,Region,Genre) %>% mutate(all_sales = sum(Sales)) %>%
+  ungroup()
+viz3 <- histo_df %>% ggplot(aes(x = all_sales)) + geom_histogram()
+ggiraph(ggobj = viz3)
 })
 ```
