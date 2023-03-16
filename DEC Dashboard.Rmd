@@ -18,17 +18,13 @@ library(stringr)
 library(ggiraph)
 library(treemap)
 library(d3treeR)
-user_path <- "/Users/taylor/Documents/OMSBA 5210/DEC/OMSBA-5210-DEC"
-
-
-game_reviews <- read.csv(paste0(user_path,"/Data/game_reviews.csv"))
-global_sales <- read.csv(paste0(user_path,"/Data/global_sales.csv"))
-pc_game_sales <- read.csv(paste0(user_path,"/Data/pc_game_sales.csv"))
-twitch_game_data <- read.csv(paste0(user_path,"/Data/twitch_game_data.csv"))
-twitch_global_data <- read.csv(paste0(user_path,"/Data/twitch_global_data.csv"))
-
+user_path <- "C:/Users/Erin/Documents/5210 DATA VIZ/data_exploration"
+game_reviews <- read.csv(paste0(user_path,"/game_reviews.csv"))
+global_sales <- read.csv(paste0(user_path,"/global_sales.csv"))
+pc_game_sales <- read.csv(paste0(user_path,"/pc_game_sales.csv"))
+twitch_game_data <- read.csv(paste0(user_path,"/twitch_game_data.csv"))
+twitch_global_data <- read.csv(paste0(user_path,"/twitch_global_data.csv"))
 data_set <- merge(x=global_sales,y=game_reviews,by.x="Name",by.y="name")
-
 options(scipen = 999)
 
 game_reviews_temp <- game_reviews %>% mutate(user_review = as.numeric(user_review) * 10) %>%
