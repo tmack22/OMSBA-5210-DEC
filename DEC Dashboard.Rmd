@@ -1,7 +1,7 @@
 ---
 title: "DEC Dashboard"
-author: "Taylor Mack"
-date: "3/10/2023"
+author: "Daniel Aina, Erin Ballar, Taylor Mack"
+date: "3/2/2023"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
@@ -139,7 +139,7 @@ checkboxGroupInput("fil_genre","Choose Genre:",sort(unique(data_set$Genre)),sele
 
 Column {.tabset}
 -----------------------------------------------------------------------
-### Bar Chart
+### Top Publishers
 ```{r bar chart, echo=FALSE}
 renderggiraph({
 data_set2 <- data_set %>% gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
@@ -148,7 +148,11 @@ data_set2 <- data_set %>% gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sa
                        Region == "EU_Sales" ~ "Europe",
                        Region == "JP_Sales" ~ "Japan",
                        Region == "Other_Sales" ~ "Other",
-                       TRUE ~ Region)) %>% mutate(tooltip = paste0('Genre:',Genre, '\n', 'Total Sales:', sum(Sales))) %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
+                       TRUE ~ Region)) %>% group_by(Publisher,Genre) %>%
+                       mutate(pub_sales = sum(Sales)) %>%
+                       mutate(tooltip = paste0('Genre:',Genre, '\n', 'Total Sales:', pub_sales)) %>%
+             filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
+                       
   
 top_pub <- data_set2 %>% group_by(Publisher) %>% mutate(top_sales = sum(Sales)) %>%
            select(Publisher,top_sales) %>% unique() %>% arrange(desc(top_sales)) %>%
@@ -156,19 +160,16 @@ top_pub <- data_set2 %>% group_by(Publisher) %>% mutate(top_sales = sum(Sales)) 
 
 bar_data_set <- data_set2 %>% filter(Publisher %in% top_pub$Publisher)
 
-bar_plot <- ggplot(bar_data_set,aes(x=Sales,y=Publisher,fill= Genre)) + labs(x = 'Sales', y = 'Publishers', title = 'Top Video Game Genres by Publishers') + scale_x_continuous(labels= scales::comma) + scale_color_brewer(palette="Set3") +
-  geom_bar(stat = 'identity') +
-  geom_point_interactive(aes(tooltip = tooltip), size = .05)
+bar_plot <- ggplot(bar_data_set,aes(fill= Genre,x=Sales/1000000,y=Publisher,tooltip = tooltip)) +
+  geom_bar_interactive(position="stack",stat="identity") + labs(x = 'Sales in Millions', y = 'Publishers', title = 'Top Video Game Genres by Publishers') + scale_color_brewer(palette="Set3")
 
 ggiraph(ggobj = bar_plot)
 
 })
 ```
 
-### point
+### Top 100 Video Games
 ```{r point, echo=FALSE}
-
-
 renderggiraph({
 point_df <- df1 %>% 
             filter(Region %in% input$fil_region & Genre %in% input$fil_genre) %>% group_by(Name,Platform) %>% mutate(all_sales = sum(Sales)) %>% ungroup() %>%
@@ -182,20 +183,21 @@ viz1 <- ggplot(point_df, mapping=aes(x = rank, y = all_sales/1000000, color = Pl
   scale_x_reverse() +
   scale_color_brewer(palette = 'Set3') +
   theme_minimal() +
-  labs(x = 'Rank', y = 'Global Sales in Millions', title = 'Global Sales of Top 100 Video Games') +
+  labs(x = 'Rank', y = 'Sales in Millions', title = 'Sales of Top 100 Video Games') +
   theme(plot.title =element_text(hjust = .5, size = 18), text = element_text(size = 12))
 ggiraph(ggobj = viz1)
 })
 ```
 
-### Bubble
+### Twitch Streams to Sales
 ```{r bubble, echo=FALSE}
 renderggiraph({
-bubble_df <- df2 %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre) %>%
-    mutate(tooltip = paste0(tooltip = paste0('Title: ', stringr::str_to_title(Name), 
-                                             '\nHours Watched On Twitch (Millions): ', total_hours_watched, 
-                                             '\nSales (Millions): ', all_sales,
-                                             '\nAverage Peak Channels: ', avg_peak_channels))) 
+bubble_df <- df2 %>% select(-c("Region")) %>% filter(Genre %in% input$fil_genre) %>%
+    mutate(tooltip = paste0(tooltip = paste0('Title: ', stringr::str_to_title(Name),
+                                             '\nGenre: ',Genre,
+                                             '\nHours Watched On Twitch (Millions): ', total_hours_watched/1000000, 
+                                             '\nSales (Millions): ', all_sales/1000000,
+                                             '\nAverage Peak Channels: ', avg_peak_channels))) %>% unique()
   
 viz2 <- ggplot(bubble_df, mapping = aes(x = total_hours_watched/1000000, y=all_sales/1000000, size = avg_peak_channels, color = Genre, tooltip = tooltip)) +
     geom_point_interactive(alpha = .7) +
@@ -207,11 +209,10 @@ viz2 <- ggplot(bubble_df, mapping = aes(x = total_hours_watched/1000000, y=all_s
 ggiraph(ggobj = viz2)
 })
 
-
 ```
 
 
-### Tree map
+### Sales Region Tree map
 
 ```{r tree map, echo=FALSE}
 renderD3tree2({
@@ -231,27 +232,29 @@ d3tree2(treemap(tree_data_set,index=c("Region_updated","Genre"),vSize="Sales",ti
 
 ```
 
-### Reg Meta
+### Metacritic Rating Regression
 ```{r Reg Meta}
 renderggiraph({
 mscore_data_set <- regression_data_set %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
                     
 
-mscore <- ggplot(mscore_data_set,mapping= aes(x=meta_score,y=Sales)) + geom_point_interactive(aes(tooltip=meta_tooltip)) +
-          geom_smooth() + scale_color_brewer(palette="Set3") + scale_y_continuous(labels= scales::comma) +
-          labs(x="Metacritic Rating (1-100)",y= "Global Sales",title= "Metacritic Rating Regression on Global Sales")
+mscore <- ggplot(mscore_data_set,mapping= aes(x=meta_score,y=Sales/1000000)) + geom_point_interactive(aes(tooltip=meta_tooltip)) +
+          geom_smooth() + scale_color_brewer(palette="Set3") +
+          labs(x="Metacritic Rating (1-100)",y= "Sales in Millions",title= "Metacritic Rating Regression on Global Sales") +
+          theme(plot.title = element_text(hjust = .5, size = 18), text = element_text(size = 12))
 
 ggiraph(ggobj=mscore)
 })
 ```
 
-### Reg User
+### User Rating Regression
 ```{r Reg User}
 renderggiraph({
 uscore_data_set <- regression_data_set %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
                   
-uscore <- ggplot(uscore_data_set,mapping= aes(x=user_review,y=Sales)) + geom_point_interactive(aes(tooltip=user_tooltip)) + geom_smooth() + scale_color_brewer(palette="Set3") + scale_y_continuous(labels= scales::comma) +
-          labs(x= "User Rating (1-100)",y= "Global Sales",title= "User Rating Regression on Global Sales")
+uscore <- ggplot(uscore_data_set,mapping= aes(x=user_review,y=Sales/1000000)) + geom_point_interactive(aes(tooltip=user_tooltip)) + geom_smooth() + scale_color_brewer(palette="Set3") + scale_y_continuous(labels= scales::comma) +
+          labs(x= "User Rating (1-100)",y= "Sales in Millions",title= "User Rating Regression on Global Sales") +
+          theme(plot.title = element_text(hjust = .5, size = 18), text = element_text(size = 12))
 ggiraph(ggobj=uscore)
 })
 ```
