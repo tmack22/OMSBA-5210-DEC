@@ -18,12 +18,12 @@ library(stringr)
 library(ggiraph)
 library(treemap)
 library(d3treeR)
-user_path <- "C:/Users/Erin/Documents/5210 DATA VIZ/data_exploration"
-game_reviews <- read.csv(paste0(user_path,"/game_reviews.csv"))
-global_sales <- read.csv(paste0(user_path,"/global_sales.csv"))
-pc_game_sales <- read.csv(paste0(user_path,"/pc_game_sales.csv"))
-twitch_game_data <- read.csv(paste0(user_path,"/twitch_game_data.csv"))
-twitch_global_data <- read.csv(paste0(user_path,"/twitch_global_data.csv"))
+user_path <- "/Users/taylor/Documents/OMSBA 5210/DEC/OMSBA-5210-DEC"
+game_reviews <- read.csv(paste0(user_path,"/Data/game_reviews.csv"))
+global_sales <- read.csv(paste0(user_path,"/Data/global_sales.csv"))
+pc_game_sales <- read.csv(paste0(user_path,"/Data/pc_game_sales.csv"))
+twitch_game_data <- read.csv(paste0(user_path,"/Data/twitch_game_data.csv"))
+twitch_global_data <- read.csv(paste0(user_path,"/Data/twitch_global_data.csv"))
 data_set <- merge(x=global_sales,y=game_reviews,by.x="Name",by.y="name")
 options(scipen = 999)
 
@@ -171,7 +171,28 @@ ggiraph(ggobj = bar_plot)
 })
 ```
 
+### Sales Region Tree map
+
+```{r tree map, echo=FALSE}
+renderD3tree2({
+tree_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
+                 gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
+                 group_by(Name,Region) %>%
+                 select(Name,Genre,Region,Sales) %>% mutate(Region_updated= Region) %>% unique() %>%
+                  mutate(Region_updated = case_when(
+                       Region == "NA_Sales" ~ "North America",
+                       Region == "EU_Sales" ~ "Europe",
+                       Region == "JP_Sales" ~ "Japan",
+                       Region == "Other_Sales" ~ "Other",
+                       TRUE ~ Region)) %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
+              
+d3tree2(treemap(tree_data_set,index=c("Region_updated","Genre"),vSize="Sales",title= "Sales by Region and Genre"),rootname="Sales by Region and Genre")
+})
+
+```
+
 ### Top 100 Video Games
+
 ```{r point, echo=FALSE}
 renderggiraph({
 point_df <- df1 %>% 
@@ -201,8 +222,20 @@ renderggiraph({
 ggiraph(ggobj = viz3)
 })
 ```
-Column {data-width=650}
------------------------------------------------------------------------
+
+### Top 100 Sales Distribution
+```{r sales distribution}
+renderggiraph({
+  histo_df <- df3 %>% 
+            filter(Region %in% input$fil_region & Genre %in% input$fil_genre) %>% group_by(Name,Region,Genre) %>% mutate(all_sales = sum(Sales)) %>% ungroup()
+  viz3 <- histo_df %>% ggplot(aes(x = all_sales/1000000)) +
+    geom_histogram(binwidth = 1, fill = "#A3E4D7", color = "#A3E4D7") +
+  labs(x = 'Total Sales(Millions)', y = 'Count', title = 'Histogram of Sales of Top 100 Games') +
+  theme(plot.title =element_text(hjust = .5, size = 18), text = element_text(size = 12))
+ggiraph(ggobj = viz3)
+})
+```
+
 ### Twitch Streams to Sales
 ```{r bubble, echo=FALSE}
 renderggiraph({
@@ -225,40 +258,9 @@ ggiraph(ggobj = viz2)
 
 ```
 
-
-### Sales Region Tree map
-
-```{r tree map, echo=FALSE}
-renderD3tree2({
-tree_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
-                 gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
-                 group_by(Name,Region) %>%
-                 select(Name,Genre,Region,Sales) %>% mutate(Region_updated= Region) %>% unique() %>%
-                  mutate(Region_updated = case_when(
-                       Region == "NA_Sales" ~ "North America",
-                       Region == "EU_Sales" ~ "Europe",
-                       Region == "JP_Sales" ~ "Japan",
-                       Region == "Other_Sales" ~ "Other",
-                       TRUE ~ Region)) %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
-              
-d3tree2(treemap(tree_data_set,index=c("Region_updated","Genre"),vSize="Sales",title= "Sales by Region and Genre"),rootname="Sales by Region and Genre")
-})
-
-```
-### Histogram of Ratings 
-
-```{r Histogram Ratings}
-renderggiraph({
-  
-  
-  
-  viz3 <- ggplot()
-  
-})
-
-```
-
 ### Metacritic Rating Regression
+
+
 ```{r Reg Meta}
 renderggiraph({
 mscore_data_set <- regression_data_set %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
@@ -272,6 +274,12 @@ mscore <- ggplot(mscore_data_set,mapping= aes(x=meta_score,y=Sales/1000000)) + g
 ggiraph(ggobj=mscore)
 })
 
+
+```
+
+### Metacritic Rating Distribution
+
+```{r Histogram Ratings}
 renderggiraph({
 mscore_histo <- regression_data_set %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
 viz4 <- mscore_histo %>% ggplot(aes(x = meta_score)) +
@@ -284,6 +292,7 @@ ggiraph(ggobj = viz4)
 ```
 
 ### User Rating Regression
+
 ```{r Reg User}
 renderggiraph({
 uscore_data_set <- regression_data_set %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
@@ -294,6 +303,11 @@ uscore <- ggplot(uscore_data_set,mapping= aes(x=user_review,y=Sales/1000000)) + 
 ggiraph(ggobj=uscore)
 })
 
+
+```
+
+### User Rating Distribution
+```{r hist}
 renderggiraph({
 uscore_histo <- regression_data_set %>% filter(Region %in% input$fil_region & Genre %in% input$fil_genre)
 viz5 <- uscore_histo %>% ggplot(aes(x = user_review)) +
@@ -302,16 +316,5 @@ viz5 <- uscore_histo %>% ggplot(aes(x = user_review)) +
   theme(plot.title =element_text(hjust = .5, size = 18), text = element_text(size = 12))
 ggiraph(ggobj = viz5)
 
-})
-```
-
-```{r hist}
-renderggiraph({
-df3 <- df %>% filter(Name %in% top_100$Name) %>% left_join(top_100,by=c("Name","Platform","Genre")) %>% subset(rank %in% c(1.0:100.0))
-histo_df <- df3 %>%
-  filter(Region %in% input$fil_region & Genre %in% input$fil_genre) %>% group_by(Name,Region,Genre) %>% mutate(all_sales = sum(Sales)) %>%
-  ungroup()
-viz3 <- histo_df %>% ggplot(aes(x = all_sales)) + geom_histogram()
-ggiraph(ggobj = viz3)
 })
 ```
