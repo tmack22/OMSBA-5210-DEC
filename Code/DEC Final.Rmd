@@ -127,7 +127,44 @@ df3 <- df %>% filter(Name %in% top_100$Name) %>% left_join(top_100,by=c("Name","
 
 ```
 
-### Top Publishers
+### Scenario
+
+In order to tie our project in with a story, we chose the scenario that we are a new gaming development company that is trying to successfully break into the gaming industry.  In order to do so, we are seeking insights to help inspire our first release. 
+
+### Objectives
+ 
+The key objectives that we want to gain from this study are:
+
+1. Review publisher market share, see how has the most genre variety amongst their titles
+2. Identify the most popular genre
+3. Identify the preferred video game platform
+4. Compare sales totals among the top 100 video games
+5. Determine if there is a correlation between critic ratings and sales, and user rating and sales
+6. Establish a target rating range to aim for
+7. Decide if it is worth pushing marketing efforts into video game streaming platforms
+
+
+### The Data
+
+For this project we found two data sets from Kaggle courtesy of Ibraihim Naeem and Ran Kris.  The Video Game Sales data set includes data on essential video game information such as genre, publisher, sales in different regions, and user ratings. The second data set, Top Games on Twitch 2016 - 2021 contains streaming data across various video games, such as average channels, total hours watched, and total average viewers.
+
+### Preparing the Data
+
+Luckily, the data sets that we found were already pretty tidy, and our main challenge with it was combining the datasets together.
+
+*Some things that we did to make the data work with us include:
+*Converting the critic rating and user rating to a scale out of 100
+*Spelling out the abbreviations and clean up the variable names
+*Join the video game sales dataframe to the twitch dataframe
+*Then finally,we subset and filtered the data frame as needed for each individual visualization 
+
+### Important Notes
+
+Twitch is a popular video game-focused live streaming platform where users can broadcast themselves playing games and interact with viewers. However, users are not limited to just video games. Some popular alternatives include music, art, and ASMR.
+
+Meta critic scores are determined by taking the weighted average of scores made by a large group of respected video game critics. Games with a  score of 90+ are considered a “must play” game.  This is very different from user rating, in which anyone can write a review and the rating is taken from the average.
+
+### Top Publishers and Genres
 
 ```{r bar chart}
 data_set2 <- data_set %>% gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
@@ -154,7 +191,9 @@ ggiraph(ggobj = bar_plot)
 
 ```
 
-### Sales Region Tree map
+The first visual we made was a bar chart that shows what publishers are the most successful in each region as well as tracking their overall global success. One thing we can take away from this visual is that Activision and Electronic Arts are the most successful publishers. The interesting thing about this graph is you can see how each genre is distributed with each publisher. So for example, a majority of the focus for Activision is in their shooting genre while Electronic Arts focus on action games. A major takeaway for us as we try to enter the gaming industry is to consider allowing these two major publishers to publish our game. Lastly, choosing a less popular genre might also be an idea for us to consider because the market might potentially be over saturated with shooter games and action games.
+
+### Sales Region Tree Map
 
 ```{r tree map}
 tree_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
@@ -172,7 +211,9 @@ d3tree2(treemap(tree_data_set,index=c("Region_updated","Genre"),vSize="Sales",ti
 
 ```
 
-### Top 100 Video Games
+The treemap visual gives us insight as to what countries have the most video game sales. This will allow us to choose a target market or a target audience to try and appeal to. The US and Europe have the most sales, and the two most purchased gaming genres are shooters and action games in the US, while action and sports games are more popular in Europe. Japan on the other hand seems to enjoy role-playing games, and those types of games are the most popular genre in the country. This treemap will allow us to potentially tailor our game to certain regions in order to garner more attention and popularity. 
+
+### Video Game Rank in Top 100 to Sales
 
 ```{r point}
 point_df <- df1 %>% group_by(Name,Platform) %>% mutate(all_sales = sum(Sales)) %>% ungroup() %>%
@@ -190,6 +231,16 @@ viz1 <- ggplot(point_df, mapping=aes(x = rank, y = all_sales/1000000, color = Pl
   theme(plot.title =element_text(hjust = .5, size = 18), text = element_text(size = 12))
 ggiraph(ggobj = viz1)
 
+```
+The purpose of this visual is to see how the rank of a game affects the amount of sales it achieves.  The results show us that there is also a notable difference in sales numbers. It is also interesting to see how the number of sales start to steeply project upward the moment a game enters the top 50 threshold. It is also really cool to see how our nice and smooth line becomes a bit more scattered as we filter the graph by each reason.
+
+From this graph we can also identify what are the most popular platforms by the region. In North America, the Xbox appears to be the most dominant platform, while in Europe it's the Playstation, and in Japan is the 3DS and its successor the 3DS. It’s interesting that there are no two regions that have the same platform of choice, and all of them are made by separate companies.
+
+On another note, Kinect Adventures is a standout outlier on this graph, which may be due to being part of bundle package deal with Xbox360 purchases. Considering its success, we should consider a game console bundle pack with our game.
+
+### Histogram of Sales Distribution of Top 100 Games
+
+```{r Sales histo}
   histo_df <- df3 %>% 
              group_by(Name,Region,Genre) %>% mutate(all_sales = sum(Sales)) %>% ungroup()
   viz3 <- histo_df %>% ggplot(aes(x = all_sales/1000000)) +
@@ -197,10 +248,14 @@ ggiraph(ggobj = viz1)
   labs(x = 'Total Sales(Millions)', y = 'Count', title = 'Histogram of Sales of Top 100 Games') +
   theme(plot.title =element_text(hjust = .5, size = 18), text = element_text(size = 12))
 ggiraph(ggobj = viz3)
-
 ```
 
-### Twitch Streams to Sales
+This histogram of the sales of the top 100 games appear to have a strong right tail distribution, meaning that most video games make it within the range of 0-5 million sales, which is rather low to us. The histogram also gives us an idea on what is the reasonable expectation on how the sales for our game will play out.
+
+This also raises the question on how we should define success. Is it if we reach more than 5 million in sales? Or is it if we meet about the same amount as everyone else does, which is less than 2.5 million sales?
+
+
+### Hours Watched on Twitch to Sales
 
 ```{r bubble}
 
@@ -222,6 +277,11 @@ ggiraph(ggobj = viz2)
 
 ```
 
+A key objective of ours was to determine if a Twitch marketing campaign is essential to gaining more sales.  To our surprise, this visual shows us there is not a notable correlation between hours watched on twitch to sales.  The amount of people streaming the game (the average number of channels) also does not have a strong effect on sales.
+
+An important note to bear in mind is that before we merged the data all together, our dataset showed that League of Legends, which is a free to play game, was the most watched game on Twitch. However due to not having information on revenues for free to play games, we were unable to include them. These games typically gain income from selling battle passes, skins, expansion packs, or esports. It may be unnecessary to push a Twitch marketing campaign, but it might be beneficial to us to look into free to play games in the future.
+
+
 ### Metacritic Rating Regression
 
 ```{r Reg Meta}
@@ -236,6 +296,14 @@ mscore <- ggplot(mscore_data_set,mapping= aes(x=meta_score,y=Sales/1000000)) + g
 
 ggiraph(ggobj=mscore)
 
+```
+
+This regression shows us that in the North American region metacritic scores seem to have a larger impact on sales than Europe and Japan.  Sales dramatically skyrocket after a video game attains a metacritic score of about 90. Since metacritic scores and reviews are posted in English, language barriers may be a possible factor into having less impact outside of North America.
+
+### Histogram of Metacritic Score Distribution
+
+```{r Meta Histo}
+
 mscore_histo <- regression_data_set
 viz4 <- mscore_histo %>% ggplot(aes(x = meta_score)) +
     geom_histogram(binwidth = 1, fill = "#A3E4D7", color = "#A3E4D7") +
@@ -244,6 +312,7 @@ viz4 <- mscore_histo %>% ggplot(aes(x = meta_score)) +
 ggiraph(ggobj = viz4)
 
 ```
+This histogram shows us that the score that has the most occurrences is around 80, which is a lot higher than we expected. We expected that critics to be a little more unyielding when it comes to the score they give.
 
 ### User Rating Regression
 
@@ -255,6 +324,13 @@ uscore <- ggplot(uscore_data_set,mapping= aes(x=user_review,y=Sales/1000000)) + 
           theme(plot.title = element_text(hjust = .5, size = 18), text = element_text(size = 12))
 ggiraph(ggobj=uscore)
 
+```
+What we learn from this regression is that there does not appear to be a strong correlation between user ratings to sales across all regions. Although we do acknowledge that Japan may possibly have a slightly stronger positive correlation compared to the other regions.
+
+### Histogram and of User Ratings Distribution
+
+```{r U Ratings Histo}
+
 uscore_histo <- regression_data_set
 viz5 <- uscore_histo %>% ggplot(aes(x = user_review)) +
     geom_histogram(binwidth = 1, fill = "#A3E4D7", color = "#A3E4D7") +
@@ -263,5 +339,14 @@ viz5 <- uscore_histo %>% ggplot(aes(x = user_review)) +
 ggiraph(ggobj = viz5)
 
 ```
+User ratings seem to align with metacritic ratings, but with a slightly stronger left tail.  Users seem to be more critical on game reviews than critics, but we need to take into consideration that user review scores are made from a potentially larger sample size, while critic scores are generated from a smaller group that are hand selected to review the games.
+
+### Conclusion and Recommendations
+
+*Activision or Electronic Arts are our preferred publishing companies.
+*It might be best to not choose a popular genre (ie. action and shooters) due to over saturation of the market. Simulation or role play games are a probable option.
+*A Twitch marketing campaign may not be necessary at the moment, but making our game free to play is an option to look into.
+*Attaining a Metacritic score in the range of 80-85 is a good goal to boost North American and European sales, but as always we want to achieve the highest score possible.
+*User scores seem to have more of an impact in Japan, so we need to put that into consideration to make the game player-friendly.
 
 
