@@ -9,7 +9,7 @@ output:
 runtime: shiny
 ---
 
-```{r global, include=FALSE}
+```{r global}
 library(flexdashboard)
 library(shinydashboard)
 library(tidyverse)
@@ -18,12 +18,14 @@ library(stringr)
 library(ggiraph)
 library(treemap)
 library(d3treeR)
-user_path <- "/Users/taylor/Documents/OMSBA 5210/DEC/OMSBA-5210-DEC"
-game_reviews <- read.csv(paste0(user_path,"/Data/game_reviews.csv"))
-global_sales <- read.csv(paste0(user_path,"/Data/global_sales.csv"))
-pc_game_sales <- read.csv(paste0(user_path,"/Data/pc_game_sales.csv"))
-twitch_game_data <- read.csv(paste0(user_path,"/Data/twitch_game_data.csv"))
-twitch_global_data <- read.csv(paste0(user_path,"/Data/twitch_global_data.csv"))
+
+github_repo <- "https://github.com/tmack22/OMSBA-5210-DEC"
+
+game_reviews <- read.csv("game_reviews.csv")
+global_sales <- read.csv("global_sales.csv")
+pc_game_sales <- read.csv("pc_game_sales.csv")
+twitch_game_data <- read.csv("twitch_game_data.csv")
+twitch_global_data <- read.csv("twitch_global_data.csv")
 data_set <- merge(x=global_sales,y=game_reviews,by.x="Name",by.y="name")
 options(scipen = 999)
 
@@ -143,7 +145,7 @@ checkboxGroupInput("fil_genre","Choose Genre:",sort(unique(data_set$Genre)),sele
 Column {.tabset}
 -----------------------------------------------------------------------
 ### Top Publishers
-```{r bar chart, echo=FALSE}
+```{r bar chart}
 renderggiraph({
 data_set2 <- data_set %>% gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
                        mutate(Region_updated = case_when(
@@ -161,10 +163,11 @@ top_pub <- data_set2 %>% group_by(Publisher) %>% mutate(top_sales = sum(Sales)) 
            select(Publisher,top_sales) %>% unique() %>% arrange(desc(top_sales)) %>%
            head(n=5) %>% select(Publisher)
 
-bar_data_set <- data_set2 %>% filter(Publisher %in% top_pub$Publisher)
+bar_data_set <- data_set2 %>% filter(Publisher %in% top_pub$Publisher) %>% 
+                mutate(Sales_per_mil = Sales/1000000)
 
-bar_plot <- ggplot(bar_data_set,aes(fill= Genre,x=Sales/1000000,y=Publisher,tooltip = tooltip)) +
-  geom_bar_interactive(position="stack",stat="identity") + labs(x = 'Sales in Millions', y = 'Publishers', title = 'Top Video Game Genres by Publishers') + scale_color_brewer(palette="Set3")
+bar_plot <- ggplot(data=bar_data_set,mapping=aes(fill= Genre,x=Sales_per_mil,y=Publisher,tooltip = tooltip)) +
+  geom_bar_interactive(stat="identity") + labs(x = 'Sales in Millions', y = 'Publishers', title = 'Top Video Game Genres by Publishers') + scale_color_brewer(palette="Set3")
 
 ggiraph(ggobj = bar_plot)
 
@@ -173,7 +176,7 @@ ggiraph(ggobj = bar_plot)
 
 ### Sales Region Tree map
 
-```{r tree map, echo=FALSE}
+```{r tree map}
 renderD3tree2({
 tree_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
                  gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
@@ -193,7 +196,7 @@ d3tree2(treemap(tree_data_set,index=c("Region_updated","Genre"),vSize="Sales",ti
 
 ### Top 100 Video Games
 
-```{r point, echo=FALSE}
+```{r point}
 renderggiraph({
 point_df <- df1 %>% 
             filter(Region %in% input$fil_region & Genre %in% input$fil_genre) %>% group_by(Name,Platform) %>% mutate(all_sales = sum(Sales)) %>% ungroup() %>%
@@ -237,7 +240,7 @@ ggiraph(ggobj = viz3)
 ```
 
 ### Twitch Streams to Sales
-```{r bubble, echo=FALSE}
+```{r bubble}
 renderggiraph({
 bubble_df <- df2 %>% select(-c("Region")) %>% filter(Genre %in% input$fil_genre) %>%
     mutate(tooltip = paste0(tooltip = paste0('Title: ', stringr::str_to_title(Name),
@@ -273,8 +276,6 @@ mscore <- ggplot(mscore_data_set,mapping= aes(x=meta_score,y=Sales/1000000)) + g
 
 ggiraph(ggobj=mscore)
 })
-
-
 ```
 
 ### Metacritic Rating Distribution

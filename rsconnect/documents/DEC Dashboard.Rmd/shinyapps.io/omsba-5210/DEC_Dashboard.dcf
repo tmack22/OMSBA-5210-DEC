@@ -1,0 +1,13 @@
+name: DEC_Dashboard
+title: DEC_Dashboard
+username:
+account: omsba-5210
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 8600365
+bundleId: 6973609
+url: https://omsba-5210.shinyapps.io/DEC_Dashboard/
+when: 1679092964.36919
+lastSyncTime: 1679092964.3692
+asMultiple: FALSE
+asStatic: FALSE

@@ -139,7 +139,6 @@ ggiraph(ggobj=uscore)
 library(treemap)
 library(d3treeR)
 
-
 tree_data_set <- data_set %>% select(-c("Platform","Rank")) %>% unique() %>%
                  gather("Region","Sales",c("NA_Sales","EU_Sales","JP_Sales","Other_Sales")) %>%
                  group_by(Name,Region) %>%

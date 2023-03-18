@@ -6,10 +6,10 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE, warning=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE)
 ```
 
-```{r library and Data Load, include=FALSE}
+```{r library and Data Load, include=TRUE}
 library(flexdashboard)
 library(shinydashboard)
 library(tidyverse)
@@ -152,11 +152,11 @@ For this project we found two data sets from Kaggle courtesy of Ibraihim Naeem a
 
 Luckily, the data sets that we found were already pretty tidy, and our main challenge with it was combining the datasets together.
 
-*Some things that we did to make the data work with us include:
-*Converting the critic rating and user rating to a scale out of 100
-*Spelling out the abbreviations and clean up the variable names
-*Join the video game sales dataframe to the twitch dataframe
-*Then finally,we subset and filtered the data frame as needed for each individual visualization 
+* Some things that we did to make the data work with us include:
+* Converting the critic rating and user rating to a scale out of 100
+* Spelling out the abbreviations and clean up the variable names
+* Join the video game sales dataframe to the twitch dataframe
+* Then finally,we subset and filtered the data frame as needed for each individual visualization 
 
 ### Important Notes
 
@@ -343,10 +343,14 @@ User ratings seem to align with metacritic ratings, but with a slightly stronger
 
 ### Conclusion and Recommendations
 
-*Activision or Electronic Arts are our preferred publishing companies.
-*It might be best to not choose a popular genre (ie. action and shooters) due to over saturation of the market. Simulation or role play games are a probable option.
-*A Twitch marketing campaign may not be necessary at the moment, but making our game free to play is an option to look into.
-*Attaining a Metacritic score in the range of 80-85 is a good goal to boost North American and European sales, but as always we want to achieve the highest score possible.
-*User scores seem to have more of an impact in Japan, so we need to put that into consideration to make the game player-friendly.
+* Activision or Electronic Arts are our preferred publishing companies.
+
+* It might be best to not choose a popular genre (ie. action and shooters) due to over saturation of the market. Simulation or role play games are a probable option.
+
+* A Twitch marketing campaign may not be necessary at the moment, but making our game free to play is an option to look into.
+
+* Attaining a Metacritic score in the range of 80-85 is a good goal to boost North American and European sales, but as always we want to achieve the highest score possible.
+
+* User scores seem to have more of an impact in Japan, so we need to put that into consideration to make the game player-friendly.
 
 
